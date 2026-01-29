@@ -1,0 +1,9 @@
+flask
+langchain==0.1.16
+langchain-community==0.0.36
+langchain-core
+faiss-cpu
+pypdf
+sentence-transformers
+python-dotenv
+streamlit
