@@ -1,4 +1,23 @@
+# Environment variables
 .env
+
+# Python cache
 __pycache__/
-temp.pdf
 *.pyc
+*.pyo
+
+# Virtual environment
+venv/
+.venv/
+
+# Temporary files
+temp.pdf
+
+# OS files
+.DS_Store
+
+Thumbs.db
+
+
+templates/
+
