@@ -9,7 +9,7 @@ app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
 os.makedirs('uploads', exist_ok=True)
 
-# Cache the embeddings object so it's only created once across all uploads
+
 _embeddings_cache = None
 _embeddings_lock = threading.Lock()
 
@@ -19,17 +19,16 @@ def get_embeddings():
     with _embeddings_lock:
         if _embeddings_cache is None:
             from langchain_community.embeddings import OllamaEmbeddings
-            # Uses the same Ollama server that's already running — no download needed
+            
             _embeddings_cache = OllamaEmbeddings(model="nomic-embed-text")
         return _embeddings_cache
 
-# Global RAG state
 rag_state = {
     "db": None,
     "rag_chain": None,
     "loaded_file": None,
     "num_chunks": 0,
-    "status": "idle",      # idle | processing | ready | error
+    "status": "idle",     
     "progress_msg": "",
     "error": ""
 }
@@ -41,13 +40,13 @@ def init_rag_background(pdf_path, filename):
         rag_state["status"] = "processing"
         rag_state["error"] = ""
 
-        # Step 1: Load PDF
+        
         rag_state["progress_msg"] = "Loading PDF pages..."
         from langchain_community.document_loaders import PyMuPDFLoader
         loader = PyMuPDFLoader(pdf_path)
         documents = loader.load()
 
-        # Step 2: Clean & split
+        
         rag_state["progress_msg"] = "Cleaning & splitting text..."
         def clean_text(text):
             text = text.replace("\n", " ")
@@ -61,11 +60,11 @@ def init_rag_background(pdf_path, filename):
         splitter = CharacterTextSplitter(separator="\n\n", chunk_size=500, chunk_overlap=100)
         chunks = splitter.split_documents(documents)
 
-        # Step 3: Embeddings via Ollama (no download — reuses running Ollama server)
+        
         rag_state["progress_msg"] = f"Embedding {len(chunks)} chunks via Ollama..."
         embeddings = get_embeddings()
 
-        # Step 4: FAISS index
+        
         rag_state["progress_msg"] = "Building FAISS vector index..."
         from langchain_community.vectorstores import FAISS
         db = FAISS.from_documents(chunks, embeddings, normalize_L2=True)
@@ -75,7 +74,7 @@ def init_rag_background(pdf_path, filename):
             search_kwargs={"score_threshold": 0.5, "k": 3}
         )
 
-        # Step 5: RAG chain
+       
         rag_state["progress_msg"] = "Initialising RAG chain..."
         from langchain_community.llms import Ollama
         from langchain.prompts import ChatPromptTemplate
@@ -105,7 +104,7 @@ Answer:""")
             | prompt | llm | parser
         )
 
-        # Done
+        
         rag_state["db"] = db
         rag_state["rag_chain"] = rag_chain
         rag_state["loaded_file"] = filename
@@ -465,14 +464,14 @@ def upload():
     path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     f.save(path)
 
-    # Reset state
+    
     rag_state.update({
         "db": None, "rag_chain": None, "loaded_file": None,
         "num_chunks": 0, "status": "processing",
         "progress_msg": "Starting...", "error": ""
     })
 
-    # Start background thread — /upload returns instantly
+    
     threading.Thread(target=init_rag_background, args=(path, filename), daemon=True).start()
     return jsonify({"success": True})
 
@@ -505,6 +504,6 @@ def query():
 
 
 if __name__ == '__main__':
-    # Pre-warm embeddings so first upload is faster
+    
     threading.Thread(target=get_embeddings, daemon=True).start()
     app.run(debug=True, port=5000, threaded=True)
